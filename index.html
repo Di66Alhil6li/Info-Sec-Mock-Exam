@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>محاكي الامتحان النهائي - أمن المعلومات</title>
+    <style>
+        :root {
+            --navy: #174d38;
+            --blue: #1769aa;
+            --gold: #f1b544;
+            --light: #f5f8fb;
+            --green: #16805b;
+            --red: #bf3f42;
+            --ink: #1f2933;
+            --muted: #687789;
+            --bg: #eef3f7;
+            --border-radius: 12px;
+        }
+
+        * { box-sizing: border-box; }
+        
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: Tahoma, Arial, sans-serif;
+            line-height: 1.8;
+        }
+
+        .wrap {
+            max-width: 980px;
+            margin: auto;
+            padding: 22px 14px 50px;
+        }
+
+        /* Header Styles */
+        .hero {
+            background: linear-gradient(135deg, #46f320, #03804c);
+            color: white;
+            border-radius: var(--border-radius);
+            padding: 28px 26px;
+            margin-bottom: 18px;
+            box-shadow: 0 8px 24px rgba(23, 50, 77, 0.17);
+        }
+        .hero h1 { margin: 0 0 8px; font-size: 26px; }
+        .hero p { margin: 4px 0; color: #edf6fc; }
+
+        .toolbar {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 15px 20px;
+            box-shadow: 0 2px 9px rgba(23, 50, 77, 0.07);
+            position: sticky;
+            top: 10px;
+            z-index: 100;
+        }
+        .progress-bar-container {
+            flex: 1;
+            min-width: 180px;
+            background: #e5ebf0;
+            height: 14px;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            display: block;
+            height: 100%;
+            background: var(--gold);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .count-text { font-weight: bold; color: var(--navy); }
+
+        .section-badge {
+            display: inline-block;
+            background: var(--light);
+            color: var(--blue);
+            font-size: 13px;
+            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            border: 1px solid #c8dce9;
+        }
+        .question-card {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 24px;
+            margin: 15px 0;
+            box-shadow: 0 3px 12px rgba(23, 50, 77, 0.05);
+            border: 2px solid transparent;
+            transition: border-color 0.2s;
+        }
+        .question-card.answered { border-color: #c8dce9; }
+        
+        .q-head {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            font-weight: bold;
+            font-size: 17px;
+        }
+        .q-num {
+            background: var(--navy);
+            color: #fff;
+            border-radius: 50%;
+            min-width: 32px;
+            height: 32px;
+            line-height: 32px;
+            text-align: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0 0 44px;
+        }
+        @media(max-width: 768px) {
+            .options-grid { grid-template-columns: 1fr; margin-left: 0; margin-right: 0;}
+        }
+
+        .option-label {
+            border: 1px solid #ccd7e0;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            background: #fff;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+        }
+        .option-label:hover { background: #f1f7fc; border-color: var(--blue); }
+        .option-label input { accent-color: var(--blue); margin-left: 10px; flex-shrink: 0;}
+        
+        /* Buttons */
+        .btn {
+            border: 0;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: filter 0.2s;
+            color: white;
+        }
+        .btn:hover { filter: brightness(0.9); }
+        .btn-primary { background: var(--gold); color: var(--navy); }
+        .btn-secondary { background: var(--navy); }
+        .actions { display: flex; gap: 15px; margin-top: 25px; }
+
+        /* Results Styles */
+        .result-container {
+            display: none;
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 25px;
+            margin-top: 30px;
+            box-shadow: 0 4px 15px rgba(23, 50, 77, 0.1);
+        }
+        .result-container.show { display: block; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .score-text { font-size: 28px; color: var(--navy); font-weight: bold; margin-bottom: 5px;}
+        .review-box {
+            border-top: 1px solid #e1e8ed;
+            padding: 15px 0;
+            margin-top: 15px;
+        }
+        .review-box.wrong { border-right: 5px solid var(--red); padding-right: 15px; }
+        .review-box.correct { border-right: 5px solid var(--green); padding-right: 15px; }
+        .text-wrong { color: var(--red); font-weight: bold; }
+        .text-correct { color: var(--green); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="wrap">
+    <header class="hero">
+        <h1>محاكي الامتحان النهائي (Mock Exam) 🎯</h1>
+        <p><b>بنك الأسئلة الشامل: 338 سؤال | المادة: أمن المعلومات</b></p>
+        <p>يسحب هذا الاختبار <b>50 سؤالاً عشوائياً</b> في كل مرة تقوم فيها بتحديث الصفحة. اختبر نفسك وعش أجواء الامتحان الحقيقي!</p>
+    </header>
+
+    <div class="toolbar">
+        <span class="count-text" id="answeredCount">تمت الإجابة: 0 / 50</span>
+        <div class="progress-bar-container">
+            <span class="progress-bar-fill" id="progressBar"></span>
+        </div>
+        <span id="percentText" class="count-text">0%</span>
+    </div>
+
+    <form id="quizForm"></form>
+
+    <div class="actions">
+        <button type="button" id="submitBtn" class="btn btn-primary">إنهاء الاختبار وعرض النتيجة</button>
+        <button type="button" id="refreshBtn" class="btn btn-secondary">تحديث (سحب 50 سؤال جديد)</button>
+    </div>
+
+    <section id="resultSection" class="result-container" aria-live="polite"></section>
+</div>
+
+<script src="All_Questions_JS_Format.js"></script>
+
+<script>
+
+    const QUESTIONS_PER_QUIZ = 50; 
+    let currentQuizQuestions = [];
+    let isSubmitted = false;
+
+    const quizForm = document.getElementById('quizForm');
+    const resultSection = document.getElementById('resultSection');
+    const answeredCountEl = document.getElementById('answeredCount');
+    const progressBar = document.getElementById('progressBar');
+    const percentText = document.getElementById('percentText');
+
+
+    function shuffleArray(array) {
+        let currentIndex = array.length, randomIndex;
+        while (currentIndex !== 0) {
+            randomIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex--;
+            [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+        }
+        return array;
+    }
+
+    // تهيئة الاختبار
+    function initQuiz() {
+        if(typeof generatedQuestions === 'undefined' || generatedQuestions.length === 0) {
+            quizForm.innerHTML = '<h3 style="text-align:center; color:var(--red);">عذراً، لم يتم العثور على الأسئلة. تأكد من تحميل ملف All_Questions_JS_Format.js وضعه في نفس المجلد!</h3>';
+            return;
+        }
+
+        const shuffledBank = shuffleArray([...generatedQuestions]);
+        currentQuizQuestions = shuffledBank.slice(0, Math.min(QUESTIONS_PER_QUIZ, shuffledBank.length));
+        
+        renderQuestions();
+        updateProgress();
+    }
+
+    function renderQuestions() {
+        quizForm.innerHTML = ''; 
+
+        currentQuizQuestions.forEach((item, index) => {
+            const optionsHTML = item.o.map((opt, optIndex) => `
+                <label class="option-label">
+                    <input type="radio" name="q${index}" value="${optIndex}">
+                    <span>${String.fromCharCode(65 + optIndex)}. ${opt}</span>
+                </label>
+            `).join('');
+
+            const questionHTML = `
+                <article class="question-card" id="questionCard-${index}">
+                    <span class="section-badge">${item.section}</span>
+                    <div class="q-head">
+                        <span class="q-num">${index + 1}</span>
+                        <span>${item.q}</span>
+                    </div>
+                    <div class="options-grid">
+                        ${optionsHTML}
+                    </div>
+                </article>
+            `;
+            quizForm.insertAdjacentHTML('beforeend', questionHTML);
+        });
+
+        // مراقبة التغييرات
+        quizForm.addEventListener('change', (e) => {
+            if (e.target.matches('input[type="radio"]')) {
+                e.target.closest('.question-card').classList.add('answered');
+                updateProgress();
+            }
+        });
+    }
+
+    // الحصول على إجابات المستخدم
+    function getUserAnswers() {
+        return currentQuizQuestions.map((_, index) => {
+            const selected = document.querySelector(`input[name="q${index}"]:checked`);
+            return selected ? parseInt(selected.value) : null;
+        });
+    }
+
+    // تحديث شريط التقدم
+    function updateProgress() {
+        const answers = getUserAnswers();
+        const answeredCount = answers.filter(ans => ans !== null).length;
+        const total = currentQuizQuestions.length;
+        const percentage = total === 0 ? 0 : Math.round((answeredCount / total) * 100);
+
+        answeredCountEl.textContent = `تمت الإجابة: ${answeredCount} / ${total}`;
+        progressBar.style.width = `${percentage}%`;
+        percentText.textContent = `${percentage}%`;
+    }
+
+    // تقييم وعرض النتيجة
+    function submitQuiz() {
+        if (isSubmitted || currentQuizQuestions.length === 0) return;
+
+        const answers = getUserAnswers();
+        const unansweredCount = answers.filter(ans => ans === null).length;
+
+        if (unansweredCount > 0) {
+            const confirmSubmit = confirm(`يوجد ${unansweredCount} أسئلة لم تقم بالإجابة عليها. هل أنت متأكد من الإنهاء؟`);
+            if (!confirmSubmit) return;
+        }
+
+        let score = 0;
+        let reviewHTML = '';
+
+        answers.forEach((userAns, index) => {
+            const questionData = currentQuizQuestions[index];
+            const isCorrect = userAns === questionData.a;
+            
+            if (isCorrect) {
+                score++;
+            } else {
+                const userAnswerText = userAns === null ? 'لم تتم الإجابة' : `${String.fromCharCode(65 + userAns)}. ${questionData.o[userAns]}`;
+                const correctAnswerText = `${String.fromCharCode(65 + questionData.a)}. ${questionData.o[questionData.a]}`;
+
+                reviewHTML += `
+                    <div class="review-box wrong">
+                        <span class="section-badge">${questionData.section}</span>
+                        <h4>${index + 1}. ${questionData.q}</h4>
+                        <div class="text-wrong">إجابتك: ${userAnswerText}</div>
+                        <div class="text-correct">الإجابة الصحيحة: ${correctAnswerText}</div>
+                        <div style="margin-top:5px; font-size: 14px; color: var(--muted)"><b>التوضيح:</b> ${questionData.e}</div>
+                    </div>
+                `;
+            }
+        });
+
+        const total = currentQuizQuestions.length;
+        const scorePercentage = Math.round((score / total) * 100);
+        let feedbackTitle = scorePercentage >= 90 ? 'مستوى ممتاز جداً! جاهز للامتحان 🥇' : 
+                            scorePercentage >= 75 ? 'مستوى جيد جداً، استمر 🥈' : 
+                            scorePercentage >= 60 ? 'تحتاج لبعض المراجعة الإضافية 🥉' : 
+                            'راجع المحاضرات بتركيز أكبر، يمكنك التحسن!';
+
+        let finalHTML = `
+            <div class="score-text">النتيجة: ${score} من ${total} (${scorePercentage}%)</div>
+            <p style="font-size: 18px;">${feedbackTitle}</p>
+            <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+        `;
+
+        if (score === total) {
+            finalHTML += `<div class="review-box correct"><b>أحسنت يا وحش! إجاباتك كلها صحيحة 100% 🚀</b></div>`;
+        } else {
+            finalHTML += `<h3>مراجعة الأخطاء:</h3> ${reviewHTML}`;
+        }
+
+        resultSection.innerHTML = finalHTML;
+        resultSection.classList.add('show');
+        resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        
+        isSubmitted = true;
+        document.querySelectorAll('input[type="radio"]').forEach(radio => radio.disabled = true);
+        document.getElementById('submitBtn').disabled = true;
+        document.getElementById('submitBtn').style.opacity = '0.5';
+    }
+
+
+    document.getElementById('submitBtn').addEventListener('click', submitQuiz);
+    
+    document.getElementById('refreshBtn').addEventListener('click', () => {
+        if (isSubmitted || confirm('هل أنت متأكد من رغبتك ببدء اختبار جديد بـ 50 سؤال مختلف؟')) {
+            window.location.reload();
+        }
+    });
+
+    initQuiz();
+</script>
+</body>
+</html>

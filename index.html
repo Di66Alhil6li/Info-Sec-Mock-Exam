@@ -80,7 +80,7 @@
         .option-label input { accent-color: var(--blue); margin-left: 10px; flex-shrink: 0;}
         .btn {
             border: 0; border-radius: 8px; padding: 12px 24px;
-            font-size: 16px; font-weight: bold; cursor: pointer;
+            font-size: 15px; font-weight: bold; cursor: pointer;
             transition: filter 0.2s; color: white;
         }
         .btn:hover { filter: brightness(0.9); }
@@ -89,9 +89,9 @@
         .select-btn {
             background: white; color: var(--navy); 
             border: 2px solid var(--navy); outline: none;
-            font-family: inherit; font-size: 15px;
+            font-family: inherit; font-size: 14px; padding: 10px 15px;
         }
-        .actions { display: flex; gap: 15px; margin-top: 25px; flex-wrap: wrap; }
+        .actions { display: flex; gap: 12px; margin-top: 25px; flex-wrap: wrap; align-items: center;}
         .result-container {
             display: none; background: white; border-radius: var(--border-radius);
             padding: 25px; margin-top: 30px; box-shadow: 0 4px 15px rgba(23, 50, 77, 0.1);
@@ -111,10 +111,10 @@
     <header class="hero">
         <h1>محاكي الامتحان النهائي (Mock Exam) 🎯</h1>
         <p><b>بنك الأسئلة الشامل: 338 سؤال (من المحاضرة 1 إلى 11) | المادة: أمن المعلومات</b></p>
-        <p>قم باختيار عدد الأسئلة التي تريد اختبار نفسك بها في كل جولة.</p>
+        <p>قم باختيار المحاضرة وعدد الأسئلة التي تريد اختبار نفسك بها في كل جولة.</p>
     </header>
     <div class="toolbar">
-        <span class="count-text" id="answeredCount">تمت الإجابة: 0 / 50</span>
+        <span class="count-text" id="answeredCount">تمت الإجابة: 0 / 0</span>
         <div class="progress-bar-container"><span class="progress-bar-fill" id="progressBar"></span></div>
         <span id="percentText" class="count-text">0%</span>
     </div>
@@ -122,18 +122,27 @@
     <div class="actions">
         <button type="button" id="submitBtn" class="btn btn-primary">إنهاء الاختبار وعرض النتيجة</button>
         <button type="button" id="refreshBtn" class="btn btn-secondary">تحديث (سحب أسئلة جديدة)</button>
+        
+        <!-- قائمة اختيار المحاضرة -->
+        <select id="lectureSelect" class="btn select-btn">
+            <option value="all" selected>جميع المحاضرات</option>
+            <!-- سيتم إضافة المحاضرات هنا برمجياً -->
+        </select>
+
+        <!-- قائمة اختيار عدد الأسئلة -->
         <select id="qCountSelect" class="btn select-btn">
             <option value="10">10 أسئلة</option>
             <option value="20">20 سؤال</option>
             <option value="30">30 سؤال</option>
             <option value="50" selected>50 سؤال (الافتراضي)</option>
             <option value="100">100 سؤال</option>
-            <option value="all">جميع الأسئلة (338 سؤال)</option>
+            <option value="all">جميع الأسئلة المتاحة</option>
         </select>
     </div>
     <section id="resultSection" class="result-container" aria-live="polite"></section>
 </div>
 
+<!-- استدعاء ملف الأسئلة الخارجي -->
 <script src="All_Questions.js"></script>
 
 <script>
@@ -146,7 +155,38 @@
     var progressBar = document.getElementById('progressBar');
     var percentText = document.getElementById('percentText');
     var qCountSelect = document.getElementById('qCountSelect');
+    var lectureSelect = document.getElementById('lectureSelect');
     var submitBtn = document.getElementById('submitBtn');
+
+    var prevCount = qCountSelect.value;
+    var prevLecture = lectureSelect.value;
+
+    // تهيئة قائمة المحاضرات من ملف الأسئلة
+    function populateLectures() {
+        if(typeof generatedQuestions === 'undefined' || generatedQuestions.length === 0) return;
+        
+        var uniqueLectures = [];
+        for (var i = 0; i < generatedQuestions.length; i++) {
+            var sec = generatedQuestions[i].section;
+            if (uniqueLectures.indexOf(sec) === -1) {
+                uniqueLectures.push(sec);
+            }
+        }
+        
+        // ترتيب المحاضرات رقمياً
+        uniqueLectures.sort(function(a, b) {
+            var numA = parseInt(a.replace(/[^0-9]/g, '')) || 0;
+            var numB = parseInt(b.replace(/[^0-9]/g, '')) || 0;
+            return numA - numB;
+        });
+
+        for (var j = 0; j < uniqueLectures.length; j++) {
+            var opt = document.createElement('option');
+            opt.value = uniqueLectures[j];
+            opt.textContent = uniqueLectures[j];
+            lectureSelect.appendChild(opt);
+        }
+    }
 
     function shuffleArray(array) {
         var currentIndex = array.length, randomIndex;
@@ -160,22 +200,34 @@
         return array;
     }
 
-    function getSelectedCount() {
+    function getSelectedCount(maxAvail) {
         var val = qCountSelect.value;
-        return val === 'all' ? generatedQuestions.length : parseInt(val);
+        return val === 'all' ? maxAvail : parseInt(val);
     }
 
     function initQuiz() {
         if(typeof generatedQuestions === 'undefined' || generatedQuestions.length === 0) {
-            quizForm.innerHTML = '<h3 style="text-align:center; color:red;">عذراً، لم يتم العثور على الأسئلة. تأكد من وجود ملف All_Questions.js في نفس المجلد!</h3>';
+            quizForm.innerHTML = '<h3 style="text-align:center; color:var(--red);">عذراً، لم يتم العثور على الأسئلة. تأكد من وجود ملف All_Questions.js في نفس المجلد!</h3>';
             return;
         }
         
-        var numQuestions = getSelectedCount();
-        var shuffledBank = shuffleArray(generatedQuestions.slice());
+        var filteredQuestions = generatedQuestions;
+        if (lectureSelect.value !== 'all') {
+            filteredQuestions = generatedQuestions.filter(function(q) {
+                return q.section === lectureSelect.value;
+            });
+        }
+
+        var numQuestions = getSelectedCount(filteredQuestions.length);
+        
+        var shuffledBank = shuffleArray(filteredQuestions.slice());
         currentQuizQuestions = shuffledBank.slice(0, Math.min(numQuestions, shuffledBank.length));
         
-        renderQuestions();
+        if (currentQuizQuestions.length === 0) {
+            quizForm.innerHTML = '<h3 style="text-align:center;">لا توجد أسئلة لهذه المحاضرة.</h3>';
+        } else {
+            renderQuestions();
+        }
         updateProgress();
     }
 
@@ -258,7 +310,7 @@
         }
 
         var total = currentQuizQuestions.length;
-        var scorePercentage = Math.round((score / total) * 100);
+        var scorePercentage = total === 0 ? 0 : Math.round((score / total) * 100);
         var feedbackTitle = scorePercentage >= 90 ? 'مستوى ممتاز جداً! جاهز للامتحان 🥇' : 
                             scorePercentage >= 75 ? 'مستوى جيد جداً، استمر 🥈' : 
                             scorePercentage >= 60 ? 'تحتاج لبعض المراجعة الإضافية 🥉' : 
@@ -266,9 +318,9 @@
 
         var finalHTML = '<div class="score-text">النتيجة: ' + score + ' من ' + total + ' (' + scorePercentage + '%)</div><p style="font-size: 18px;">' + feedbackTitle + '</p><hr style="border:0; border-top:1px solid #eee; margin:15px 0;">';
 
-        if (score === total) {
+        if (score === total && total > 0) {
             finalHTML += '<div class="review-box correct"><b>أحسنت يا وحش! إجاباتك كلها صحيحة 100% 🚀</b></div>';
-        } else {
+        } else if (total > 0) {
             finalHTML += '<h3>مراجعة الأخطاء:</h3> ' + reviewHTML;
         }
 
@@ -303,20 +355,25 @@
         }
     };
 
-    qCountSelect.onchange = function() {
-        if (isSubmitted || confirm('تغيير عدد الأسئلة سيبدأ اختباراً جديداً، هل أنت متأكد؟')) {
+    lectureSelect.onchange = function() {
+        if (isSubmitted || confirm('تغيير المحاضرة سيبدأ اختباراً جديداً، هل أنت متأكد؟')) {
+            prevLecture = this.value;
             resetQuizUI();
         } else {
-            // إرجاع القائمة للعدد السابق إذا ألغى المستخدم
-            var prevLen = currentQuizQuestions.length;
-            if(prevLen === generatedQuestions.length) {
-                this.value = 'all';
-            } else {
-                this.value = prevLen.toString();
-            }
+            this.value = prevLecture;
         }
     };
 
+    qCountSelect.onchange = function() {
+        if (isSubmitted || confirm('تغيير عدد الأسئلة سيبدأ اختباراً جديداً، هل أنت متأكد؟')) {
+            prevCount = this.value;
+            resetQuizUI();
+        } else {
+            this.value = prevCount;
+        }
+    };
+
+    populateLectures();
     initQuiz();
 </script>
 </body>
